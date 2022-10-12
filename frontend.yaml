@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  labels:
+    app: monsterstack
+spec:
+  ports:
+    - port: 5000
+  selector:
+    app: monsterstack 
+    partie: frontend
+  type: ClusterIP
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: monsterstack
+spec:
+  selector:
+    matchLabels:
+      app: monsterstack
+      partie: frontend
+  strategy:
+    type: Recreate
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: monsterstack
+        partie: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: docker.io/limiteduptime/tp3-frontend:latest
+          ports:
+            - containerPort: 5000
+          livenessProbe:
+            tcpSocket: # si le socket est ouvert c'est que l'application est démarrée
+              port: 5000
+            initialDelaySeconds: 5 # wait before firt probe
+            timeoutSeconds: 1 # timeout for the request
+            periodSeconds: 10 # probe every 10 sec
+            failureThreshold: 3 # fail maximum 3 times
+          readinessProbe:
+            httpGet:
+              path: /healthz # si l'application répond positivement sur sa route /healthz c'est qu'elle est prête pour le traffic
+              port: 5000
+              httpHeaders:
+                - name: Accept
+                  value: application/json
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 10
+            failureThreshold: 3
+          env:
+          - name: CONTEXT
+            value: DEV        
+          - name: REDIS_DOMAIN
+            value: redis
+          - name: IMAGEBACKEND_DOMAIN
+            value: imagebackend
+          resources:
+            requests:
+              cpu: "100m" # 10% de proc
+              memory: "50Mi"
+            limits:
+              cpu: "300m" # 30% de proc
+              memory: "200Mi"
+
+
+
